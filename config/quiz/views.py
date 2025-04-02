@@ -18,21 +18,23 @@ def exam_detail(request, exam_id):
     return render(request, 'quiz/exam_detail.html', {'exam': exam, 'questions': questions})
 
 def exam_create(request, exam_id = None):
-    """Vista para crear un nuevo examen"""
-    if request.method == 'POST':
-        form = ExamForm(request.POST)
-        if form.is_valid():
-            exam = form.save()
-            messages.success(request, 'Examen creado correctamente.')
-            return redirect('question_create', exam_id=exam.id)
+    if exam_id:
+        exam = get_object_or_404(Exam, id=exam_id)
+        form = ExamForm(request.POST or None, instance=exam)  # Usamos el examen existente si `exam_id` está presente
     else:
-        form = ExamForm()
+        exam = None
+        form = ExamForm(request.POST or None)  # Si no existe `exam_id`, es una creación
     
-    if exam_id :
-        exam = Exam.objects.get(id = exam_id)
-        print("xd")
-        return render(request, 'quiz/exam_form.html', {'form': form, 'exam': exam})
-    return render(request, 'quiz/exam_form.html', {'form': form})
+    if request.method == 'POST':
+        if form.is_valid():
+            exam = form.save()  # Guarda el examen (ya sea nuevo o actualizado)
+            if exam_id:
+                messages.success(request, 'Examen actualizado correctamente.')
+            else:
+                messages.success(request, 'Examen creado correctamente.')
+            return redirect('exam_detail', exam_id=exam.id)  # Redirige a la creación de preguntas para este examen
+    
+    return render(request, 'quiz/exam_form.html', {'form': form, 'exam': exam})
 
 def question_create(request, exam_id):
     """Vista para añadir preguntas a un examen"""
@@ -80,15 +82,3 @@ def exam_delete(request, exam_id):
     print(exam.delete())
     return redirect(reverse('exam_list'))
 
-def exam_update(request, exam_id):
-    exam = Exam.objects.get(id=exam_id)
-    if request.method == 'POST':
-        form = ExamForm(request.POST)
-        if form.is_valid():
-            exam = form.save()
-            messages.success(request, 'Examen creado correctamente.')
-            return redirect('question_create', exam_id=exam.id)
-    else:
-        form = ExamForm()
-    
-    return render(request, 'quiz/exam_form.html', {'form': form})
